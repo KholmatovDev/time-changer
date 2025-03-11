@@ -27,6 +27,7 @@ function getCurrentDate() {
         phoneCode: async () => await input.text("SMS yoki Telegram kodi: "),
         onError: (err) => console.log(err),
     });
+    console.log("Session string:", client.session.save());
 
     console.log("Telegramga muvaffaqiyatli ulandik!");
 
