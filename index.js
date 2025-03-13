@@ -4,8 +4,8 @@ const { StringSession } = require("telegram/sessions");
 const moment = require("moment");
 const bodyParser = require("body-parser");
 
-const apiId = YOUR_API_ID; // Telegram API ID
-const apiHash = "YOUR_API_HASH"; // Telegram API Hash
+const apiId = 2078915; // Telegram API ID
+const apiHash = "b3ef044789b0d95f067d2e520bdb8684"; // Telegram API Hash
 
 const stringSession = new StringSession(""); // Oldin sessiya mavjud bo'lsa, shu yerga kiriting
 const app = express();
