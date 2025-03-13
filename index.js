@@ -1,61 +1,62 @@
-const { TelegramClient, Api } = require("telegram");
+const express = require("express");
+const { TelegramClient } = require("telegram");
 const { StringSession } = require("telegram/sessions");
-const input = require("input");
+const moment = require("moment");
+const bodyParser = require("body-parser");
 
-const apiId = 26641389;         // my.telegram.org'dan olingan api_id
-const apiHash = "559e14a34f84c378d80348be7d484b36";   // my.telegram.org'dan olingan api_hash
-const stringSession = new StringSession(""); // Agar oldin login qilmagan bo'lsangiz
+const apiId = YOUR_API_ID; // Telegram API ID
+const apiHash = "YOUR_API_HASH"; // Telegram API Hash
 
-// Joriy sanani olish uchun funksiya
-function getCurrentDate() {
-    const date = new Date();
-    // Sana formatini istalgan tarzda sozlashingiz mumkin
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0"); // Oyni 0-indeks sifatida qaytaradi
-    const year = date.getFullYear();
-    return `${day}.${month}.${year}`;
-}
+const stringSession = new StringSession(""); // Oldin sessiya mavjud bo'lsa, shu yerga kiriting
+const app = express();
+const port = 3000;
 
-(async () => {
-    const client = new TelegramClient(stringSession, apiId, apiHash, {
-        connectionRetries: 5,
-    });
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static("public"));
 
-    await client.start({
-        phoneNumber: async () => await input.text("Telefon raqamingizni kiriting: "),
-        password: async () => await input.text("2FA parolni kiriting (agar bo'lsa): "),
-        phoneCode: async () => await input.text("SMS yoki Telegram kodi: "),
-        onError: (err) => console.log(err),
-    });
-    console.log("Session string:", client.session.save());
+app.get("/", (req, res) => {
+    res.send(`
+        <form action="/update-bio" method="post">
+            <label>Telefon raqam:</label>
+            <input type="text" name="phoneNumber" required><br>
+            <label>Parol (agar mavjud bo'lsa):</label>
+            <input type="password" name="password"><br>
+            <label>Bio matni:</label>
+            <input type="text" name="bioText" required><br>
+            <button type="submit">Yangilash</button>
+        </form>
+    `);
+});
 
-    console.log("Telegramga muvaffaqiyatli ulandik!");
+app.post("/update-bio", async (req, res) => {
+    const { phoneNumber, password, bioText } = req.body;
+    const client = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 5 });
 
-    // Har 24 soatda profil bio'sini yangilash
-    setInterval(async () => {
-        const newBio = `Memento Mori ${getCurrentDate()}`;
-        try {
-            await client.invoke(
-                new Api.account.UpdateProfile({
-                    about: newBio,
-                })
-            );
-            console.log(`Profil bio yangilandi: ${newBio}`);
-        } catch (error) {
-            console.error("Xatolik yuz berdi:", error);
-        }
-    }, 86400000); // 86400000 millisekund = 24 soat
-
-    // Dastlabki bir martalik yangilanish
-    const initialBio = `Memento Mori ${getCurrentDate()}`;
     try {
-        await client.invoke(
-            new Api.account.UpdateProfile({
-                about: initialBio,
-            })
-        );
-        console.log(`Dastlabki profil bio yangilandi: ${initialBio}`);
+        await client.start({
+            phoneNumber: async () => phoneNumber,
+            password: async () => password,
+            phoneCode: async () => {
+                throw new Error("Kodni kiritish uchun qo'lda qo'shish kerak");
+            },
+            onError: (err) => console.log(err),
+        });
+
+        console.log("Muvaffaqiyatli login qilindi!");
+        console.log("Session string:", client.session.save());
+
+        const currentDate = moment().format("YYYY-MM-DD");
+        const newBio = `${bioText}\n${currentDate}`;
+
+        await client.invoke(new Api.account.UpdateProfile({ about: newBio }));
+        console.log("Bio yangilandi:", newBio);
+        res.send("Bio muvaffaqiyatli yangilandi!");
     } catch (error) {
-        console.error("Dastlabki yangilanishda xatolik:", error);
+        console.error("Xatolik yuz berdi:", error);
+        res.status(500).send("Xatolik yuz berdi: " + error.message);
     }
-})();
+});
+
+app.listen(port, () => {
+    console.log(`Server http://localhost:${port} da ishlamoqda`);
+});
